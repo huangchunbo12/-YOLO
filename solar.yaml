@@ -1,0 +1,8 @@
+# 相对路径：从当前 yaml 文件向上跳两级，进入 YOLO-shuju 文件夹
+path: ../../Solar_Filtered_3_Classes
+train: train/images
+val: valid/images
+test: test1/images
+
+nc: 3
+names: ['Dust', 'Non Defective', 'Snow']
