@@ -1270,10 +1270,12 @@ class C2fCIB(C2f):
 
 class Attention(nn.Module):
     """Attention module that performs self-attention on the input tensor.
+
     Args:
         dim (int): The input tensor dimension.
         num_heads (int): The number of attention heads.
         attn_ratio (float): The ratio of the attention key dimension to the head dimension.
+
     Attributes:
         num_heads (int): The number of attention heads.
         head_dim (int): The dimension of each attention head.
@@ -1283,8 +1285,10 @@ class Attention(nn.Module):
         proj (Conv): Convolutional layer for projecting the attended values.
         pe (Conv): Convolutional layer for positional encoding.
     """
+
     def __init__(self, c, num_heads=8, attn_ratio=0.5):
         """Initialize multi-head attention module.
+
         Args:
             dim (int): Input dimension.
             num_heads (int): Number of attention heads.
@@ -1295,13 +1299,14 @@ class Attention(nn.Module):
         self.num_heads = num_heads
         # 核心修正：增加 max(..., 1)，防止 key_dim 变成 0 导致 0.0**-0.5 报错
         self.key_dim = max(c // num_heads, 1)
-        self.scale = self.key_dim ** -0.5
+        self.scale = self.key_dim**-0.5
         nh_kd = self.key_dim * num_heads
         h = dim + nh_kd * 2
         self.qkv = Conv(dim, h, 1, act=False)
         self.proj = Conv(dim, dim, 1, act=False)
         self.pe = Conv(dim, dim, 3, 1, g=dim, act=False)
         self.head_dim = self.key_dim
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the Attention module.
 
@@ -2066,14 +2071,15 @@ class RealNVP(nn.Module):
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 # =============================================================================
 # 自定义模块：针对光伏板缺陷识别优化 (MDPI 期刊投稿增强版)
 # =============================================================================
 
+
 class SPDConv(nn.Module):
-    """空间深度转换卷积：提升对细小裂纹的检测能力。"""
+    """空间深度转换卷积：提升对细小裂纹的检测能力。."""
+
     def __init__(self, c1, c2, dimension=1):
         super().__init__()
         self.d = dimension
@@ -2085,8 +2091,10 @@ class SPDConv(nn.Module):
         res = torch.cat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]], self.d)
         return self.act(self.bn(self.conv(res)))
 
+
 class LSKBlock(nn.Module):
-    """大核选择性内核模块：适应不同尺寸的缺陷（如积雪与鸟粪）。"""
+    """大核选择性内核模块：适应不同尺寸的缺陷（如积雪与鸟粪）。."""
+
     def __init__(self, c1, c2):
         super().__init__()
         dim = c2
@@ -2108,8 +2116,10 @@ class LSKBlock(nn.Module):
         out = attn1 * attn[:, 0:1, :, :] + attn2 * attn[:, 1:2, :, :]
         return self.conv_final(out)
 
+
 class BRA(nn.Module):
-    """双层路由注意力机制：过滤背景噪声，专注于电池板缺陷区域。"""
+    """双层路由注意力机制：过滤背景噪声，专注于电池板缺陷区域。."""
+
     def __init__(self, c1, c2, num_heads=8, gate_threshold=0.05):
         super().__init__()
         dim = c2
@@ -2117,7 +2127,7 @@ class BRA(nn.Module):
         self.gate_threshold = gate_threshold
         # 核心修正：确保 key_dim 至少为 1，防止 ZeroDivisionError
         self.key_dim = max(dim // num_heads, 1)
-        self.scale = self.key_dim ** -0.5
+        self.scale = self.key_dim**-0.5
         self.qkv = nn.Conv2d(dim, dim * 3, 1)
         self.proj = nn.Conv2d(dim, dim, 1)
 
