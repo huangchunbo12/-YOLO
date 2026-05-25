@@ -14,15 +14,12 @@ from ultralytics.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh
 from ultralytics.utils.tal import RotatedTaskAlignedAssigner, TaskAlignedAssigner, dist2bbox, dist2rbox, make_anchors
 from ultralytics.utils.torch_utils import autocast
 
-from .metrics import bbox_iou, probiou
+from .metrics import bbox_iou, bbox_wiou, probiou
 from .tal import bbox2dist, rbox2dist
-from .metrics import bbox_wiou
 
 
 def bbox_wiou(box1, box2, eps=1e-7):
-    """
-    计算 WIoU v1。确保所有维度（dim）都已硬编码或正确传递。
-    """
+    """计算 WIoU v1。确保所有维度（dim）都已硬编码或正确传递。."""
     # 提取坐标 (x1, y1, x2, y2)
     b1_x1, b1_y1, b1_x2, b1_y2 = box1.chunk(4, -1)
     b2_x1, b2_y1, b2_x2, b2_y2 = box2.chunk(4, -1)
@@ -31,8 +28,9 @@ def bbox_wiou(box1, box2, eps=1e-7):
     w2, h2 = b2_x2 - b2_x1, b2_y2 - b2_y1
 
     # 交集
-    inter = (torch.min(b1_x2, b2_x2) - torch.max(b1_x1, b2_x1)).clamp(0) * \
-            (torch.min(b1_y2, b2_y2) - torch.max(b1_y1, b2_y1)).clamp(0)
+    inter = (torch.min(b1_x2, b2_x2) - torch.max(b1_x1, b2_x1)).clamp(0) * (
+        torch.min(b1_y2, b2_y2) - torch.max(b1_y1, b2_y1)
+    ).clamp(0)
 
     # 并集
     union = w1 * h1 + w2 * h2 - inter + eps
@@ -44,10 +42,11 @@ def bbox_wiou(box1, box2, eps=1e-7):
 
     # 这里注意：使用 -1 明确指定维度，避免使用未定义的 dim 变量
     c2 = cw.pow(2) + ch.pow(2) + eps
-    rho2 = (b1_x1 + b1_x2 - b2_x1 - b2_x2).pow(2) / 4 + \
-           (b1_y1 + b1_y2 - b2_y1 - b2_y2).pow(2) / 4
+    rho2 = (b1_x1 + b1_x2 - b2_x1 - b2_x2).pow(2) / 4 + (b1_y1 + b1_y2 - b2_y1 - b2_y2).pow(2) / 4
 
     return iou * torch.exp(rho2 / c2.detach())
+
+
 class VarifocalLoss(nn.Module):
     """Varifocal loss by Zhang et al.
 
