@@ -10,8 +10,6 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-from ultralytics.nn.modules.block import SPDConv, LSKBlock, BRA
-
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
     AIFI,
@@ -75,6 +73,7 @@ from ultralytics.nn.modules import (
     YOLOESegment26,
     v10Detect,
 )
+from ultralytics.nn.modules.block import BRA, LSKBlock, SPDConv
 from ultralytics.utils import DEFAULT_CFG_DICT, LOGGER, YAML, colorstr, emojis
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.utils.loss import (
@@ -1636,20 +1635,20 @@ def parse_model(d, ch, verbose=True):
                 with contextlib.suppress(ValueError):
                     args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
         n = n_ = max(round(n * depth), 1) if n > 1 else n  # depth gain
-        i# --- 修正后的 parse_model 核心逻辑 ---
+        i  # --- 修正后的 parse_model 核心逻辑 ---
         if m in base_modules or m in (SPDConv, LSKBlock, BRA):
             c1, c2 = ch[f], args[0]
             if c2 != nc:
                 c2 = make_divisible(c2 * width, 8)
-                c2 = max(c2, 8) # 确保通道数永远不为0
+                c2 = max(c2, 8)  # 确保通道数永远不为0
             args = [c1, c2, *args[1:]]
 
             # 特别处理 C3k2, C2fAttn 等带有比例参数的模块
             if m in (C3k2, C2fAttn):
                 # 如果 args[2] 是注意力比例，确保它不被 int() 强制转为 0
                 if len(args) > 2 and isinstance(args[2], float):
-                    args[2] = max(args[2], 0.1) # 强制最小比例为 0.1
-        # --------------------------------------
+                    args[2] = max(args[2], 0.1)  # 强制最小比例为 0.1
+            # --------------------------------------
             if m in repeat_modules:
                 args.insert(2, n)  # number of repeats
                 n = 1
