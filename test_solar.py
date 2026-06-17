@@ -1,7 +1,9 @@
-import os
-import csv
-import torch
 import concurrent.futures
+import csv
+import os
+
+import torch
+
 from ultralytics import YOLO
 
 # 1. 路径与配置
@@ -9,33 +11,25 @@ PROJECT_DIR = "runs/detect/runs/detect"
 DATA_CONFIG = "solar.yaml"
 RESULT_FILE = "Final_Ablation_Test_Report.csv"
 MAX_PARALLEL = 4  # A800 4路并行最优
-CLASS_NAMES = ['Dust', 'Non Defective', 'Snow']  # 从你的yaml中获取
+CLASS_NAMES = ["Dust", "Non Defective", "Snow"]  # 从你的yaml中获取
 
 # 2. 初始化 CSV 表头（扩展为包含每个类别的指标）
-base_fields = [
-    'Experiment', 'WIoU_Switch', 'mAP50', 'mAP50-95',
-    'Precision', 'Recall', 'Fitness', 'Inference_Time(ms)'
-]
+base_fields = ["Experiment", "WIoU_Switch", "mAP50", "mAP50-95", "Precision", "Recall", "Fitness", "Inference_Time(ms)"]
 # 为每个类别添加指标列
 for cls in CLASS_NAMES:
-    cls_name = cls.replace(' ', '_')
-    base_fields.extend([
-        f'{cls_name}_mAP50',
-        f'{cls_name}_mAP50-95',
-        f'{cls_name}_Precision',
-        f'{cls_name}_Recall'
-    ])
+    cls_name = cls.replace(" ", "_")
+    base_fields.extend([f"{cls_name}_mAP50", f"{cls_name}_mAP50-95", f"{cls_name}_Precision", f"{cls_name}_Recall"])
 FIELDS = base_fields
 
 
 def test_worker(task):
     exp, pid = task
     # 路径构造
-    weight_path = os.path.join(PROJECT_DIR, exp['name'], "weights", "best.pt")
-    
+    weight_path = os.path.join(PROJECT_DIR, exp["name"], "weights", "best.pt")
+
     # 增加last.pt兜底
     if not os.path.exists(weight_path):
-        weight_path = os.path.join(PROJECT_DIR, exp['name'], "weights", "last.pt")
+        weight_path = os.path.join(PROJECT_DIR, exp["name"], "weights", "last.pt")
         if not os.path.exists(weight_path):
             print(f"⚠️ 跳过: {exp['name']} (未找到best/last权重文件)")
             return None
@@ -54,7 +48,7 @@ def test_worker(task):
         test_output_dir = os.path.join("runs/detect", f"{exp['name']}_test")
         results = model.val(
             data=DATA_CONFIG,
-            split='test',
+            split="test",
             imgsz=640,
             batch=24,
             device=0,
@@ -62,64 +56,64 @@ def test_worker(task):
             project="runs/detect",
             name=f"{exp['name']}_test",  # 每个实验独立输出文件夹
             verbose=True,  # 开启详细输出，方便调试
-            workers=0
+            workers=0,
         )
 
         # 提取全局指标
         global_metrics = {
-            'Experiment': exp['name'],
-            'WIoU_Switch': wiou_switch,
-            'mAP50': round(results.box.map50, 4),
-            'mAP50-95': round(results.box.map, 4),
-            'Precision': round(results.box.mp, 4),
-            'Recall': round(results.box.mr, 4),
-            'Fitness': round(results.fitness, 4),
-            'Inference_Time(ms)': round(results.speed['inference'], 2)
+            "Experiment": exp["name"],
+            "WIoU_Switch": wiou_switch,
+            "mAP50": round(results.box.map50, 4),
+            "mAP50-95": round(results.box.map, 4),
+            "Precision": round(results.box.mp, 4),
+            "Recall": round(results.box.mr, 4),
+            "Fitness": round(results.fitness, 4),
+            "Inference_Time(ms)": round(results.speed["inference"], 2),
         }
 
         # 提取每个类别的指标
         per_class_metrics = []
         for i, cls_name in enumerate(CLASS_NAMES):
-            cls_name_safe = cls_name.replace(' ', '_')
+            cls_name_safe = cls_name.replace(" ", "_")
             cls_metrics = {
-                'Class': cls_name,
-                'mAP50': round(results.box.ap50[i].item(), 4),
-                'mAP50-95': round(results.box.ap[i].item(), 4),
-                'Precision': round(results.box.p[i].item(), 4),
-                'Recall': round(results.box.r[i].item(), 4)
+                "Class": cls_name,
+                "mAP50": round(results.box.ap50[i].item(), 4),
+                "mAP50-95": round(results.box.ap[i].item(), 4),
+                "Precision": round(results.box.p[i].item(), 4),
+                "Recall": round(results.box.r[i].item(), 4),
             }
             per_class_metrics.append(cls_metrics)
             # 填充到全局汇总字典
-            global_metrics[f'{cls_name_safe}_mAP50'] = cls_metrics['mAP50']
-            global_metrics[f'{cls_name_safe}_mAP50-95'] = cls_metrics['mAP50-95']
-            global_metrics[f'{cls_name_safe}_Precision'] = cls_metrics['Precision']
-            global_metrics[f'{cls_name_safe}_Recall'] = cls_metrics['Recall']
+            global_metrics[f"{cls_name_safe}_mAP50"] = cls_metrics["mAP50"]
+            global_metrics[f"{cls_name_safe}_mAP50-95"] = cls_metrics["mAP50-95"]
+            global_metrics[f"{cls_name_safe}_Precision"] = cls_metrics["Precision"]
+            global_metrics[f"{cls_name_safe}_Recall"] = cls_metrics["Recall"]
 
         # 保存每个实验的独立输出文件
         os.makedirs(test_output_dir, exist_ok=True)
         # 1. 保存类别级指标CSV
         per_class_csv = os.path.join(test_output_dir, "per_class_metrics.csv")
-        with open(per_class_csv, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['Class', 'mAP50', 'mAP50-95', 'Precision', 'Recall'])
+        with open(per_class_csv, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["Class", "mAP50", "mAP50-95", "Precision", "Recall"])
             writer.writeheader()
             writer.writerows(per_class_metrics)
         # 2. 保存汇总指标CSV
         summary_csv = os.path.join(test_output_dir, "summary_metrics.csv")
-        with open(summary_csv, 'w', newline='', encoding='utf-8') as f:
+        with open(summary_csv, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=FIELDS)
             writer.writeheader()
             writer.writerow(global_metrics)
 
         print(f"✅ 完成测试: {exp['name']} | mAP50: {global_metrics['mAP50']}")
-        
+
         # 释放显存
         del model
         torch.cuda.empty_cache()
         return global_metrics
 
     except Exception as e:
-        print(f"❌ 测试出错 {exp['name']}: {str(e)}")
-        if 'model' in locals():
+        print(f"❌ 测试出错 {exp['name']}: {e!s}")
+        if "model" in locals():
             del model
             torch.cuda.empty_cache()
         return None
@@ -132,10 +126,9 @@ if __name__ == "__main__":
         for use_lsk in [False, True]:
             for use_bra in [False, True]:
                 for use_wiou in [False, True]:
-                    ablation_experiments.append({
-                        "wiou": use_wiou,
-                        "name": f"S{int(use_spd)}L{int(use_lsk)}B{int(use_bra)}W{int(use_wiou)}"
-                    })
+                    ablation_experiments.append(
+                        {"wiou": use_wiou, "name": f"S{int(use_spd)}L{int(use_lsk)}B{int(use_bra)}W{int(use_wiou)}"}
+                    )
 
     # 构造SOTA模型
     sota_experiments = []
@@ -162,7 +155,7 @@ if __name__ == "__main__":
 
     # 保存全局汇总CSV
     final_data = [r for r in all_results if r is not None]
-    with open(RESULT_FILE, 'w', newline='', encoding='utf-8') as f:
+    with open(RESULT_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         writer.writeheader()
         writer.writerows(final_data)

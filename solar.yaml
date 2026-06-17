@@ -5,4 +5,4 @@ val: valid/images
 test: test1/images
 
 nc: 3
-names: ['Dust', 'Non Defective', 'Snow']
+names: ["Dust", "Non Defective", "Snow"]
