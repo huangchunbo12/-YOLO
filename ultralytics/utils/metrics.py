@@ -1568,9 +1568,7 @@ class OBBMetrics(DetMetrics):
 
 # --- 以下为你添加的 WIoU 代码 ---
 def bbox_wiou(box1, box2, iou_sum=None, eps=1e-7):
-    """
-    实现 WIoU v3 损失函数
-    box1/box2 格式均为 (x, y, w, h)
+    """实现 WIoU v3 损失函数 box1/box2 格式均为 (x, y, w, h).
     """
     # 1. 提取宽高与中心点
     (x1, y1, w1, h1), (x2, y2, w2, h2) = box1.chunk(4, -1), box2.chunk(4, -1)
@@ -1588,7 +1586,7 @@ def bbox_wiou(box1, box2, iou_sum=None, eps=1e-7):
 
     # 5. WIoU 的距离惩罚项
     # 使用 .detach() 避免 cw/ch 的梯度对整体产生负面干扰
-    r_wiou = torch.exp(dist / (cw ** 2 + ch ** 2 + eps).detach())
+    r_wiou = torch.exp(dist / (cw**2 + ch**2 + eps).detach())
 
     # 6. 返回最终损失值
     return r_wiou * (1.0 - iou)
